@@ -9,15 +9,13 @@
 ✅ Base
 ✅ Engine
 ✅ Session
-✅ 
+✅ SQLAlchemy	
+✅ Alembic	
+✅ Dependency Injection	
+✅ JWT	
 
 
 whats remaining
-
-SQLAlchemy	
-Alembic	
-Dependency Injection	
-JWT	
 File Upload	
 Background Tasks
 HTTPX

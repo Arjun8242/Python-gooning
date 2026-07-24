@@ -1,12 +1,10 @@
-from fastapi import Depends
-# pyrefly: ignore [missing-import]
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-
 from app.database import get_db
-from fastapi import APIRouter, HTTPException
+from app.models import Note, User
 from app.schemas import NoteCreate, NoteResponse
-from app.models import Note
+from app.security import get_current_user
 
 router = APIRouter(
     prefix="/notes",
@@ -14,12 +12,17 @@ router = APIRouter(
 )
 
 
-@router.post("", response_model=NoteResponse)
-def create_note(note: NoteCreate, db: Session = Depends(get_db)):
+@router.post("", response_model=NoteResponse, status_code=status.HTTP_201_CREATED)
+def create_note(
+    note: NoteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     new_note = Note(
-        title = note.title,
-        content = note.content,
-        tags = note.tags
+        title=note.title,
+        content=note.content,
+        tags=note.tags,
+        owner_id=current_user.id
     )
     db.add(new_note)
     db.commit()
@@ -28,10 +31,16 @@ def create_note(note: NoteCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{note_id}", response_model=NoteResponse)
-def update_note(note_id: int, note_data: NoteCreate, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == note_id).first()
+def update_note(
+    note_id: int,
+    note_data: NoteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    note = db.query(Note).filter(Note.id == note_id, Note.owner_id == current_user.id).first()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
     note.title = note_data.title
     note.content = note_data.content
     note.tags = note_data.tags
@@ -41,18 +50,27 @@ def update_note(note_id: int, note_data: NoteCreate, db: Session = Depends(get_d
 
 
 @router.delete("/{note_id}")
-def delete_note(note_id: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == note_id).first()
+def delete_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    note = db.query(Note).filter(Note.id == note_id, Note.owner_id == current_user.id).first()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
     db.delete(note)
     db.commit()
     return {"message": "Note deleted successfully"}
 
 
 @router.get("", response_model=list[NoteResponse])
-def get_notes(tags: str | None = None, db: Session = Depends(get_db)):
-    notes = db.query(Note).all()
+def get_notes(
+    tags: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    notes = db.query(Note).filter(Note.owner_id == current_user.id).all()
     if tags:
         filtered_notes = []
         for note in notes:
@@ -63,9 +81,14 @@ def get_notes(tags: str | None = None, db: Session = Depends(get_db)):
 
 
 @router.get("/{note_id}", response_model=NoteResponse)#passing instructions that whatever this function should return, it should match the NoteResponse model
-def get_note(note_id: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == note_id).first()
+def get_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    note = db.query(Note).filter(Note.id == note_id, Note.owner_id == current_user.id).first()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     return note
+
 

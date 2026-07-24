@@ -1,16 +1,20 @@
 from fastapi import FastAPI
-from app.routers import notes
+from app.routers import notes, auth
 from app.database import Base, engine
-from app.models import Note
-
 
 # create db tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="Notes API with JWT Authentication",
+    description="FastAPI application with PostgreSQL, SQLAlchemy ORM, and JWT Auth",
+    version="1.0.0"
+)
 
+app.include_router(auth.router)
 app.include_router(notes.router)
+
 
 @app.get('/')
 def home():
-    return {'message' : 'Hello World'}
+    return {'message': 'Hello World'}
