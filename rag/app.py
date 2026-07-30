@@ -9,8 +9,13 @@ from langchain_chroma import Chroma
 # pyrefly: ignore [missing-import]
 from langchain_groq import ChatGroq 
 # pyrefly: ignore [missing-import]
-from dotenv import load_dotenv
+from langchain_core.prompts import ChatPromptTemplate
 # pyrefly: ignore [missing-import]
+from langchain.chains.combine_documents import create_stuff_documents_chain
+# pyrefly: ignore [missing-import]
+from langchain.chains import create_retrieval_chain
+# pyrefly: ignore [missing-import]
+from dotenv import load_dotenv
 import os
 load_dotenv()
 
@@ -45,12 +50,8 @@ retriever = vectorstore.as_retriever(
 
 question = 'who is ausable and why did he said this "You  see,  my  young  friend, there  is  no  balcony?"'
 
-results = retriever.invoke(question)
-
-context = "\n\n".join([doc.page_content for doc in results])
-
-prompt = f"""
-You are an expert literature teacher.
+prompt_template = ChatPromptTemplate.from_messages([
+    ("system", """You are an expert literature teacher.
 
 Answer ONLY using the provided context.
 
@@ -70,20 +71,25 @@ Explain:
 
 End with a section titled:
 "The Plot Twist"
-where you explain why this scene surprises the reader.
-
-Context:
+where you explain why this scene surprises the reader."""),
+    ("human", """Context:
 {context}
 
 Question:
-{question}
-"""
+{input}""")
+])
 
-# Send the prompt to Groq
-response = llm.invoke(prompt)
+# Create stuff documents chain (combines LLM + prompt + retrieved documents)
+document_chain = create_stuff_documents_chain(llm, prompt_template)
+
+# Create retrieval chain (combines retriever + document_chain)
+retrieval_chain = create_retrieval_chain(retriever, document_chain)
+
+# Invoke the full retrieval chain
+response = retrieval_chain.invoke({"input": question})
 
 # Print the final answer
-print(response.content)
+print(response["answer"])
 
 
 #every document has 2 important things -> page contents = docs[0].page_content  and metadata = docs[0].metadata
