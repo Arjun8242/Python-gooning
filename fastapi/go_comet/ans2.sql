@@ -1,0 +1,1 @@
+SELECT * FROM shipments LEFT JOIN vendors ON shipments.vendor_id=vendors.vendor_id;
