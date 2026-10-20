@@ -1,3 +1,4 @@
+from langchain_core.messages import AIMessage
 import os
 import sqlite3
 from langgraph.graph import StateGraph, START, END
@@ -52,5 +53,15 @@ if __name__ == "__main__":
         if not user_input.strip():
             continue
 
-        out = workflow.invoke({"messages": [HumanMessage(content=user_input)]}, config=config)
-        print("Bot:", out["messages"][-1].content)
+        print("Bot: ", end="", flush=True)
+
+        for chunk, metadata in workflow.stream({"messages": [HumanMessage(content = user_input)]},
+        config = config,
+        stream_mode = "messages",
+        ):
+
+            if isinstance(chunk, AIMessage) and chunk.content:
+                print(chunk.content, end="", flush = True)
+
+        print()
+        print()
